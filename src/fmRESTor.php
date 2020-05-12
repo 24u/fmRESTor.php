@@ -27,6 +27,7 @@ class fmRESTor
     private $logDir = __DIR__ . "/log/";
     private $logType = self::LOG_TYPE_DEBUG;
     private $allowInsecure = false;
+    private $relogin = false;
 
     /* --- Define log const --- */
     const LOG_TYPE_DEBUG = "debug";
@@ -129,6 +130,17 @@ class fmRESTor
                 $this->response(-105);
             }
         }
+
+        /* --- Allow Insecure --- */
+        if (isset($options["relogin"])) {
+            $relogin = $options["relogin"];
+
+            if (is_bool($relogin)) {
+                $this->relogin = $relogin;
+            } else {
+                $this->response(-106);
+            }
+        }
     }
 
     /**
@@ -195,6 +207,8 @@ class fmRESTor
                 "message" => "Logout was not successfull",
                 "data" => $response
             ));
+
+            $this->destroySessionToken();
         }
 
         return $response;
@@ -206,7 +220,7 @@ class fmRESTor
      * @param array $scriptPrameters
      * @return bool|mixed
      */
-    public function runScript($scriptName, $scriptPrameters = null)
+    public function runScript($scriptName, $scriptPrameters = null, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -257,9 +271,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Script was not successfully called",
+                "message" => "Script was not successfully called - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->runScript($scriptName, $scriptPrameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -268,7 +287,7 @@ class fmRESTor
     /**
      * @return bool|mixed
      */
-    public function getDatabaseNames()
+    public function getDatabaseNames($attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -314,9 +333,15 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about database names was not successfully loaded",
+                "message" => "Information about database names was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getDatabaseNames($attempt + 1);
+            }
         }
 
         return $response;
@@ -325,7 +350,7 @@ class fmRESTor
     /**
      * @return bool|mixed
      */
-    public function getProductInformation()
+    public function getProductInformation($attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -368,9 +393,15 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Product Information was not successfully loaded",
+                "message" => "Product Information was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getProductInformation($attempt + 1);
+            }
         }
 
         return $response;
@@ -379,7 +410,7 @@ class fmRESTor
     /**
      * @return bool|mixed
      */
-    public function getScriptNames()
+    public function getScriptNames($attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -426,9 +457,15 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about script names was not successfully loaded",
+                "message" => "Information about script names was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getScriptNames($attempt + 1);
+            }
         }
 
         return $response;
@@ -437,7 +474,7 @@ class fmRESTor
     /**
      * @return bool|mixed
      */
-    public function getLayoutNames()
+    public function getLayoutNames($attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -484,9 +521,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about layout names was not successfully loaded",
+                "message" => "Information about layout names was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getLayoutNames($attempt + 1);
+            }
         }
 
         return $response;
@@ -495,7 +537,7 @@ class fmRESTor
     /**
      * @return bool|mixed
      */
-    public function getLayoutMetadata()
+    public function getLayoutMetadata($attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -542,9 +584,15 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about layout was not successfully loaded",
+                "message" => "Information about layout was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getLayoutMetadata($attempt + 1);
+            }
         }
 
         return $response;
@@ -554,7 +602,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function createRecord($parameters)
+    public function createRecord($parameters, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -603,9 +651,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully created",
+                "message" => "Record was not successfully created  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->createRecord($parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -616,7 +669,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function deleteRecord($id, $parameters = null)
+    public function deleteRecord($id, $parameters = null, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -666,9 +719,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully deleted",
+                "message" => "Record was not successfully deleted  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->deleteRecord($id, $parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -679,7 +737,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function duplicateRecord($id, $parameters = null)
+    public function duplicateRecord($id, $parameters = null, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -732,9 +790,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully edited",
+                "message" => "Record was not successfully edited  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->deleteRecord($id, $parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -745,7 +808,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function editRecord($id, $parameters)
+    public function editRecord($id, $parameters, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -794,9 +857,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully edited",
+                "message" => "Record was not successfully edited  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->editRecord($id, $parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -807,7 +875,7 @@ class fmRESTor
      * @option array $parameters
      * @return bool|mixed
      */
-    public function getRecord($id, $parameters = null)
+    public function getRecord($id, $parameters = null, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -858,9 +926,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully loaded",
+                "message" => "Record was not successfully loaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getRecord($id, $parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -870,7 +943,7 @@ class fmRESTor
      * @option array $parameters
      * @return bool|mixed
      */
-    public function getRecords($parameters = null)
+    public function getRecords($parameters = null, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -918,13 +991,18 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
+
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Records were not successfully loaded",
+                "message" => "Records were not successfully loaded - attempt " . $attempt,
                 "data" => $response
             ));
+            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
+                $this->login();
+                return $this->getRecords($parameters, $attempt + 1);
+            }
         }
 
         return $response;
@@ -937,7 +1015,7 @@ class fmRESTor
      * @param array $file
      * @return bool|mixed
      */
-    public function uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file)
+    public function uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -989,9 +1067,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "File was not successfully uploaded",
+                "message" => "File was not successfully uploaded  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
+                $this->login();
+                return $this->uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file, $attempt+1);
+            }
         }
 
         return $response;
@@ -1004,7 +1087,7 @@ class fmRESTor
      * @param string $path
      * @return bool|mixed
      */
-    public function uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path)
+    public function uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -1060,9 +1143,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "File was not successfully uploaded",
+                "message" => "File was not successfully uploaded  - attempt " . $attempt,
+
                 "data" => $response
             ));
+
+
+            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
+                $this->login();
+                return $this->uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $attempt+1);
+            }
         }
 
         return $response;
@@ -1072,7 +1162,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function findRecords($parameters)
+    public function findRecords($parameters, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -1121,9 +1211,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Records was not found",
+                "message" => "Records was not found  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
+                $this->login();
+                return $this->findRecords($parameters, $attempt+1);
+            }
         }
 
         return $response;
@@ -1133,7 +1228,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function setGlobalField($parameters)
+    public function setGlobalField($parameters, $attempt = 1)
     {
         $this->setLogRowNumber();
 
@@ -1182,9 +1277,14 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Global fields was not successfully set",
+                "message" => "Global fields was not successfully set  - attempt " . $attempt,
                 "data" => $response
             ));
+
+            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
+                $this->login();
+                return $this->setGlobalField($parameters, $attempt+1);
+            }
         }
 
         return $response;
@@ -1372,6 +1472,7 @@ class fmRESTor
                 "message" => "Token was not sucessfully created",
                 "data" => $response
             ));
+
             return $response;
         }
     }
