@@ -14,7 +14,13 @@ $duplicateRecord = array(
 
 // Duplicating record with ID 4 (field in the database - c_record_id)
 $id = 4;
-$response = $fm->duplicateRecord($id, $duplicateRecord);
+$result = $fm->duplicateRecord($id, $duplicateRecord);
+if(!$fm->isError($result)){
+    echo "Request succeeded";
+} else {
+    echo "Request Failed";
+}
 
+$response = $fm->getResponse($result);
 var_dump($response);
 exit();

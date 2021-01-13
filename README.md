@@ -1,4 +1,4 @@
-Leverage the FileMaker® 17 & 18 Data API with ease!
+Leverage the FileMaker® 17, 18 & 19 Data API with ease!
 ----
 
 fmRESTor is an object-based PHP library developed to seamlessly interact with databases and custom apps hosted on a FileMaker Server via the new powerful FileMaker Data API from within a PHP code. Forget about learning FileMaker Data API in detail, just create a new object, passing it necessary parameters to connect to the database, and use our easy to understand methods to access or modify your data. fmRESTor will take care of authentication, exceptions, logging, and even session preservation in order for your code to be a well-behaving client for the FileMaker Data API without you having to worry about these technical details.
@@ -25,9 +25,9 @@ Requirements
 
 * PHP >= 5.6
 * PHP cURL
-* FileMaker Server 17 or 18
+* FileMaker Server 17, 18 or 19
 
-Usage (with use composer)
+Usage (with composer)
 -
 
 
@@ -49,7 +49,7 @@ use fmRESTor\fmRESTor;
 $fm = new fmRESTor($host, $database, $layout, $user, $password, $options, $fmExternalSource);
 ~~~
 
-Usage (without use composer)
+Usage (without composer)
 -
 
 
@@ -82,13 +82,17 @@ $options  | array  | optional | Additional library configuration
 $fmExternalSource | array  | optional | Providing additional data sources, i.e. if you use a separation model and the current layout needs to access data from external data sources.
 ### _Options parameters:_
 
-Name | Type | Mandatory | Default value | Description
-------------- | ------------- | ------------- | ------------- | -------------
-logType | string | optional | LOG\_TYPE\_NONE | **LOG\_TYPE\_DEBUG** - Debug logging level<br/>**LOG\_TYPE\_ERRORS** - Log errors only<br/>**LOG\_TYPE\_NONE** - Disable logging
-logDir | string | optional | "log" (same path as library file) | Custom default folder for log output
-sessionName | string | optional | "fm-api-token" | Custom session name, available in "$\_SESSION['custom\_session\_name']"
-tokenExpireTime | number | optional | 14 | Expiration time in minutes. fmRESTor automatically handles database login and saves token with its expiration time (into $_SESSION var) during first request. If expired, fmRESTor automatically reconnects to database on next request.
-allowInsecure | boolean | optional | false | Valid SSL certificate required unless set to **true**
+Name | Type | Mandatory | Default value | Description | Possible error
+------------- | ------------- | ------------- | ------------- | -------------| -------------
+logType | string | optional | LOG\_TYPE\_NONE | **LOG\_TYPE\_DEBUG** - Debug logging level<br/>**LOG\_TYPE\_ERRORS** - Log errors only<br/>**LOG\_TYPE\_NONE** - Disable logging | -101 ( Unknown value )
+logDir | string | optional | "log" (same path as library file) | Custom default folder for log output | -102 (probably the wrong type of variable)
+sessionName | string | optional | "fm-api-token" | Custom session name, available in "$\_SESSION['custom\_session\_name']" | | -103 (probably the wrong type of variable)
+tokenExpireTime | number | optional | 14 | Expiration time in minutes. fmRESTor automatically handles database login and saves token with its expiration time (into $_SESSION var) during first request. If expired, fmRESTor automatically reconnects to database on next request. | -104 (probably the wrong type of variable)
+allowInsecure | boolean | optional | false | Valid SSL certificate required unless set to **true** | -105 (probably the wrong type of variable)
+autorelogin | boolean | optional | true | If request ends with auth error, fmRESTor will try the request again with request new session. It could happened if someone disconnect your session trought Admin Console or if your server was rebooted , but FileMaker Data API Token is still save in session / file on your side | -112 (probably the wrong type of variable)
+curlOptions | array | optional | [] | fmRESTor uses cURL to communicate with FileMaker Server, you can adjust the following options: [PHP cURL options list](https://www.php.net/manual/en/function.curl-setopt.php)   | -113 (probably the wrong type of variable)
+saveTokenTo | string | optional | TS\_SESSION | **TS\_SESSION** - Save FileFileMaker API token to PHP Session<br/>**TS\_FILE** - Save FileMaker API Token to File | -110 ( Unknown value )
+tokenFilePath | string | Required if option "saveTokenTo" is set to "TS_FILE" | "" | Path to file where to store FileMaker Data API Token. Create an empty file and make it writeable for PHP. | -111 (probably the wrong type of variable)
 ### _Example:_
 
 ~~~php
@@ -99,11 +103,16 @@ require_once __DIR__ . '/src/fmRESTor.php';
 use fmRESTor\fmRESTor;
 
 $options = array(
-	"logType" => "all",
+	"logType" => fmRESTor:: LOG_TYPE_NONE,
 	"logDir" => dirname(__DIR__) . "/my-logs/", 
 	"sessionName" => "fm-api-token",
 	"tokenExpireTime" => 14,
-	"allowInsecure" => true 
+	"allowInsecure" => true,
+	"curlOptions" => [
+		CURLOPT_CONNECTTIMEOUT => 30
+	],
+	"saveTokenTo" => fmRESTor::TS_FILE,
+	"tokenFilePath" => dirname(__DIR__) . "/token/filemaker-token.txt"
 );
 
 $fmExternalSource = array(
@@ -4358,25 +4367,6 @@ $fm->setFilemakerLayout("Layout_name");
 
 ___
  
-Response
--
-
-If the request is valid, an user receives a direct response from FileMaker. Otherwise, the response may contain an error (or success) code. The codes are described below:
-
- Error Code  | Description
-------------- | ------------- 
--101  | Options - Invalid value for parameter "logType"
--102 | Options - Invalid value for parameter "logDir"
--103 | Options - Invalid value for parameter "sessionName"
--104 | Options - Invalid value for parameter "tokenExpireTime"
--105 | Options - Invalid value for parameter "AllowInsecure"
--106 | Options - Function expected an array but received something else as a parameter
--107 | The method you have tried to use is not supported by this version of FileMaker Server
-
- Success Code  | Description
-------------- | ------------- 
-101  | User was succesfully logged out
-
 Examples
 -
 The examples for each method are available inside the folder "demo".

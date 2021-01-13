@@ -14,7 +14,4 @@ $fmExternalSource = array(
 );
 
 // Log in to the database with external source
-$response = $fm = new fmRESTor("127.0.0.1", "fmRESTor", "php_user", "api", "api123456", array("allowInsecure" => true), $fmExternalSource);
-
-var_dump($response);
-exit();
+$fm = new fmRESTor("127.0.0.1", "fmRESTor", "php_user", "api", "api123456", array("allowInsecure" => true), $fmExternalSource);

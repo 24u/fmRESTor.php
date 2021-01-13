@@ -33,35 +33,48 @@ $newRecord = array(
     )
 );
 
-$response = $fm->createRecord($newRecord);
+$createRecordsResult = $fm->createRecord($newRecord);
+if(!$fm->isError($createRecordsResult)){
+    echo "Request - create record - succeeded";
 
-// This is ID the record that was made and this record will be edited
-$id = $response["response"]["recordId"];
+    // This is ID the record that was made and this record will be edited
+    $id = $fm->getResponse($createRecordsResult)["recordId"];
 
-// Setting parameters for editing - surname, email, personal identification number, product key for first row, version and date of expiration for second row will be edited
-$editRecord = array(
-    "fieldData" => array(
-        "surname" => "Sutton G.",
-        "email" => "sutton.gabriel@a.edu",
-        "personal_identification_number" => "111",
-    ),
-    "portalData" => array(
-        "USER_licence" => array(
-            array(
-                "USER_licence::key" => "VK7JG-NPHTM",
-            ),
-            array(
-                "USER_licence::version" => "Business OLP",
-                "USER_licence::date_of_expiration" => "09.01.2023"
+    // Setting parameters for editing - surname, email, personal identification number, product key for first row, version and date of expiration for second row will be edited
+    $editRecord = array(
+        "fieldData" => array(
+            "surname" => "Sutton G.",
+            "email" => "sutton.gabriel@a.edu",
+            "personal_identification_number" => "111",
+        ),
+        "portalData" => array(
+            "USER_licence" => array(
+                array(
+                    "USER_licence::key" => "VK7JG-NPHTM",
+                ),
+                array(
+                    "USER_licence::version" => "Business OLP",
+                    "USER_licence::date_of_expiration" => "09.01.2023"
+                )
             )
-        )
-    ),
-    //"modId" => ,
-    "script" => "Log request",
-    "script.param" => "Parameter from fmRESTor - edit record"
-);
+        ),
+        //"modId" => ,
+        "script" => "Log request",
+        "script.param" => "Parameter from fmRESTor - edit record"
+    );
 
-// Edit the record
-$response2 = $fm->editRecord($id, $editRecord);
-var_dump($response, $response2);
-exit();
+    // Edit the record
+    $editRecordResult = $fm->editRecord($id, $editRecord);
+    if(!$fm->isError($editRecordResult)) {
+        echo "Request - edit record - succeeded";
+
+        $responseEditRecord = $fm->getResponse($editRecordResult);
+        var_dump($responseEditRecord);
+    } else {
+        echo "Request - edit record - Failed";
+        var_dump($editRecordResult);
+    }
+} else {
+    echo "Request - create record - Failed";
+    var_dump($createRecordsResult);
+}

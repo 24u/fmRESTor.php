@@ -37,6 +37,13 @@ $newRecord = array(
 );
 
 // Creating new record
-$response = $fm->createRecord($newRecord);
+$result = $fm->createRecord($newRecord);
+if(!$fm->isError($result)){
+    echo "Request succeeded";
+} else {
+    echo "Request Failed";
+}
+
+$response = $fm->getResponse($result);
 var_dump($response);
 exit();

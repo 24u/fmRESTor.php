@@ -27,7 +27,10 @@ class fmRESTor
     private $logDir = __DIR__ . "/log/";
     private $logType = self::LOG_TYPE_DEBUG;
     private $allowInsecure = false;
-    private $relogin = false;
+    private $tokenStorage = self::TS_SESSION;
+    private $autorelogin = true;
+    private $tokenFilePath = "";
+    private $curlOptions = [];
 
     /* --- Define log const --- */
     const LOG_TYPE_DEBUG = "debug";
@@ -39,7 +42,13 @@ class fmRESTor
     const LS_INFO = "info";
     const LS_WARNING = "warning";
 
+    const TS_FILE = "file";
+    const TS_SESSION = "session";
+
+
+
     const ERROR_RESPONSE_CODE = [400, 401, 403, 404, 405, 415, 500];
+    const ERROR_AUTH_RESPONSE_CODE = 401;
 
     /**
      * fmRESTor constructor.
@@ -59,8 +68,9 @@ class fmRESTor
         $this->user = $user;
         $this->password = $password;
         $this->fmDateSource = $fmDataSource;
+
         if ($options !== null) {
-            $this->setOptions($options);
+           $this->setOptions($options);
         }
 
         $this->setTimezone();
@@ -131,14 +141,44 @@ class fmRESTor
             }
         }
 
-        /* --- Allow Insecure --- */
-        if (isset($options["relogin"])) {
-            $relogin = $options["relogin"];
+        /* --- Relogin --- */
+        if (isset($options["autorelogin"])) {
+            $autorelogin = $options["autorelogin"];
 
-            if (is_bool($relogin)) {
-                $this->relogin = $relogin;
+            if (is_bool($autorelogin)) {
+                $this->autorelogin = $autorelogin;
             } else {
-                $this->response(-106);
+                $this->response(-112);
+            }
+        }
+
+        /* --- Relogin --- */
+        if (isset($options["curlOptions"])) {
+            $curlOptions = $options["curlOptions"];
+
+            if (is_array($curlOptions)) {
+                $this->curlOptions = $curlOptions;
+            } else {
+                $this->response(-113);
+            }
+        }
+
+
+        /* --- Save FileMaker Token to --- */
+        if (isset($options["tokenStorage"])) {
+            $tokenStorage = $options["tokenStorage"];
+
+            if (in_array($tokenStorage, [self::TS_FILE, self::TS_SESSION])) {
+                if($tokenStorage === self::TS_FILE){
+                    if (isset($options["tokenFilePath"]) && !empty($options["tokenFilePath"]) && is_string($options["tokenFilePath"])) {
+                        $this->tokenFilePath = $options["tokenFilePath"];
+                    } else {
+                        $this->response(-111);
+                    }
+                }
+                $this->tokenStorage = $tokenStorage;
+            } else {
+                $this->response(-110);
             }
         }
     }
@@ -176,7 +216,6 @@ class fmRESTor
             ));
 
             $this->destroySessionToken();
-            $this->response(101);
         }
 
         $request = array(
@@ -185,17 +224,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Logout was successfull",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->destroySessionToken();
@@ -205,13 +243,13 @@ class fmRESTor
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
                 "message" => "Logout was not successfull",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->destroySessionToken();
         }
 
-        return $response;
+        return $result;
 
     }
 
@@ -220,7 +258,7 @@ class fmRESTor
      * @param array $scriptPrameters
      * @return bool|mixed
      */
-    public function runScript($scriptName, $scriptPrameters = null, $attempt = 1)
+    public function runScript($scriptName, $scriptPrameters = null, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -232,7 +270,7 @@ class fmRESTor
             "data" => $scriptPrameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -252,17 +290,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Script was successfully called",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -271,23 +308,22 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Script was not successfully called - attempt " . $attempt,
-                "data" => $response
+                "message" => "Script was not successfully called",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->runScript($scriptName, $scriptPrameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->runScript($scriptName, $scriptPrameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @return bool|mixed
      */
-    public function getDatabaseNames($attempt = 1)
+    public function getDatabaseNames($relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -298,7 +334,7 @@ class fmRESTor
             "message" => "Attempt to get metadata - database names"
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -314,17 +350,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Information about database names was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -333,24 +368,23 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about database names was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Information about database names was not successfully loaded",
+                "data" => $result
             ));
 
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getDatabaseNames($attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getDatabaseNames($relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @return bool|mixed
      */
-    public function getProductInformation($attempt = 1)
+    public function getProductInformation($relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -361,7 +395,7 @@ class fmRESTor
             "message" => "Attempt to get metadata - product information"
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -374,17 +408,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Product Information was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -393,24 +426,23 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Product Information was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Product Information was not successfully loaded",
+                "data" => $result
             ));
 
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getProductInformation($attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getProductInformation($relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @return bool|mixed
      */
-    public function getScriptNames($attempt = 1)
+    public function getScriptNames($relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -421,7 +453,7 @@ class fmRESTor
             "message" => "Attempt to get metadata - script names"
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -438,17 +470,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Information about script names was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -457,24 +488,23 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about script names was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Information about script names was not successfully loaded",
+                "data" => $result
             ));
 
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getScriptNames($attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getScriptNames($relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @return bool|mixed
      */
-    public function getLayoutNames($attempt = 1)
+    public function getLayoutNames($relogin = true)
     {
         $this->setLogRowNumber();
 
@@ -485,7 +515,7 @@ class fmRESTor
             "message" => "Attempt to get metadata - layout names"
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -502,17 +532,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Information about layout names was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -521,23 +550,22 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about layout names was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Information about layout names was not successfully loaded",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getLayoutNames($attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getLayoutNames($relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @return bool|mixed
      */
-    public function getLayoutMetadata($attempt = 1)
+    public function getLayoutMetadata($relogin = true)
     {
         $this->setLogRowNumber();
 
@@ -548,7 +576,7 @@ class fmRESTor
             "message" => "Attempt to get metadata - layout information"
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -565,17 +593,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Information about layout was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -584,25 +611,24 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Information about layout was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Information about layout was not successfully loaded",
+                "data" => $result
             ));
 
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getLayoutMetadata($attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getLayoutMetadata($relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @param array $parameters
      * @return bool|mixed
      */
-    public function createRecord($parameters, $attempt = 1)
+    public function createRecord($parameters, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -614,7 +640,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -632,17 +658,16 @@ class fmRESTor
 
         $param = $this->convertParametersToJson($parameters);
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Record was successfully created",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -651,17 +676,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully created  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Record was not successfully created",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->createRecord($parameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->createRecord($parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -669,7 +693,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function deleteRecord($id, $parameters = null, $attempt = 1)
+    public function deleteRecord($id, $parameters = null, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -680,7 +704,7 @@ class fmRESTor
             "message" => "Attempt to delete a record",
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -700,17 +724,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Record was successfully deleted",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -719,13 +742,12 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully deleted  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Record was not successfully deleted",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->deleteRecord($id, $parameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->deleteRecord($id, $parameters,  $relogin = true);
             }
         }
 
@@ -737,7 +759,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function duplicateRecord($id, $parameters = null, $attempt = 1)
+    public function duplicateRecord($id, $parameters = null, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -749,7 +771,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -771,17 +793,16 @@ class fmRESTor
         }
 
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Record was successfully edited",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -790,17 +811,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully edited  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Record was not successfully edited",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->deleteRecord($id, $parameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->deleteRecord($id, $parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -808,7 +828,7 @@ class fmRESTor
      * @param array $parameters
      * @return bool|mixed
      */
-    public function editRecord($id, $parameters, $attempt = 1)
+    public function editRecord($id, $parameters, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -820,7 +840,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -841,14 +861,14 @@ class fmRESTor
         $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Record was successfully edited",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -857,17 +877,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully edited  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Record was not successfully edited",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->editRecord($id, $parameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->editRecord($id, $parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -875,7 +894,7 @@ class fmRESTor
      * @option array $parameters
      * @return bool|mixed
      */
-    public function getRecord($id, $parameters = null, $attempt = 1)
+    public function getRecord($id, $parameters = null, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -887,7 +906,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -907,17 +926,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Record was successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -926,24 +944,23 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Record was not successfully loaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Record was not successfully loaded",
+                "data" => $result
             ));
 
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getRecord($id, $parameters, $attempt + 1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getRecord($id, $parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @option array $parameters
      * @return bool|mixed
      */
-    public function getRecords($parameters = null, $attempt = 1)
+    public function getRecords($parameters = null, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -955,8 +972,9 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
+
             if ($login !== true) {
                 return $login;
             }
@@ -976,17 +994,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Records were successfully loaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -996,16 +1013,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Records were not successfully loaded - attempt " . $attempt,
-                "data" => $response
+                "message" => "Records were not successfully loaded",
+                "data" => $result
             ));
-            if (isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1) {
-                $this->login();
-                return $this->getRecords($parameters, $attempt + 1);
+
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->getRecords($parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -1015,7 +1032,7 @@ class fmRESTor
      * @param array $file
      * @return bool|mixed
      */
-    public function uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file, $attempt = 1)
+    public function uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -1027,7 +1044,7 @@ class fmRESTor
             "data" => $file
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -1048,17 +1065,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "File was successfully uploaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -1067,17 +1083,17 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "File was not successfully uploaded  - attempt " . $attempt,
-                "data" => $response
+                "message" => "File was not successfully uploaded",
+                "data" => $result
             ));
 
-            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
-                $this->login();
-                return $this->uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file, $attempt+1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+
+                return $this->uploadFormDataToContainter($id, $containerFieldName, $containerFieldRepetition, $file,  $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -1087,7 +1103,7 @@ class fmRESTor
      * @param string $path
      * @return bool|mixed
      */
-    public function uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $attempt = 1)
+    public function uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -1103,7 +1119,7 @@ class fmRESTor
             "data" => $path
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -1124,17 +1140,16 @@ class fmRESTor
         );
 
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "File was successfully uploaded",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -1143,26 +1158,25 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "File was not successfully uploaded  - attempt " . $attempt,
+                "message" => "File was not successfully uploaded",
 
-                "data" => $response
+                "data" => $result
             ));
 
 
-            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
-                $this->login();
-                return $this->uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $attempt+1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->uploadFileToContainter($id, $containerFieldName, $containerFieldRepetition, $path, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @param array $parameters
      * @return bool|mixed
      */
-    public function findRecords($parameters, $attempt = 1)
+    public function findRecords($parameters, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -1174,7 +1188,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -1192,17 +1206,16 @@ class fmRESTor
 
         $param = $this->convertParametersToJson($parameters);
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Records was successfully found",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -1211,24 +1224,24 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Records was not found  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Records was not found",
+                "data" => $result
             ));
 
-            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
-                $this->login();
-                return $this->findRecords($parameters, $attempt+1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+
+                return $this->findRecords($parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
      * @param array $parameters
      * @return bool|mixed
      */
-    public function setGlobalField($parameters, $attempt = 1)
+    public function setGlobalField($parameters, $relogin = false)
     {
         $this->setLogRowNumber();
 
@@ -1240,7 +1253,7 @@ class fmRESTor
             "data" => $parameters
         ));
 
-        if ($this->isLogged() === false) {
+        if ($this->isLogged() === false || $relogin === true) {
             $login = $this->login();
             if ($login !== true) {
                 return $login;
@@ -1258,17 +1271,16 @@ class fmRESTor
 
         $param = $this->convertParametersToJson($parameters);
         $result = $this->callURL($request, $param);
-        $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
                 "message" => "Global fields was successfully set",
-                "data" => $response
+                "data" => $result
             ));
 
             $this->extendTokenExpiration();
@@ -1277,17 +1289,16 @@ class fmRESTor
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
-                "message" => "Global fields was not successfully set  - attempt " . $attempt,
-                "data" => $response
+                "message" => "Global fields was not successfully set",
+                "data" => $result
             ));
 
-            if(isset($response["messages"][0]["code"]) && $response["messages"][0]["code"] === "952" && $this->relogin === true && $attempt === 1){
-                $this->login();
-                return $this->setGlobalField($parameters, $attempt+1);
+            if ($this->autorelogin === true && $relogin === false && isset($result["status"]["http_code"]) && $result["status"]["http_code"] === self::ERROR_AUTH_RESPONSE_CODE) {
+                return $this->setGlobalField($parameters, $relogin = true);
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**
@@ -1317,8 +1328,6 @@ class fmRESTor
             } else {
                 return null;
             }
-        } else {
-            $this->response(-106);
         }
         return null;
     }
@@ -1335,8 +1344,6 @@ class fmRESTor
             } else {
                 return "";
             }
-        } else {
-            $this->response(-106);
         }
         return "";
     }
@@ -1391,7 +1398,13 @@ class fmRESTor
         /* --- Set request URL --- */
         curl_setopt($ch, CURLOPT_URL, "https://" . $this->host . $url);
 
+        /* --- Additional custom options --- */
+        foreach($this->curlOptions as $keyOption => $optionValue){
+            curl_setopt($ch, $keyOption, $optionValue);
+        }
+
         /* --- Output--- */
+
         $result = curl_exec($ch);
         $errors = curl_error($ch);
 
@@ -1408,9 +1421,11 @@ class fmRESTor
                 "message" => "cURL request sent"
             ));
 
+            $response = json_decode($result, true);
+
             return [
                 "status" => curl_getinfo($ch),
-                "result" => json_decode($result, true)
+                "result" => ($response !== null ?  $response : $result)
             ];
         }
     }
@@ -1449,7 +1464,7 @@ class fmRESTor
         $response = $result["result"];
 
         try {
-            $this->isResultError($result);
+            $this->isError($result, true);
 
             $this->log(array(
                 "line" => __LINE__,
@@ -1459,7 +1474,7 @@ class fmRESTor
                 "data" => $response
             ));
 
-            $this->setToken($response["response"]["token"]);
+            $this->setFileMakerTokenProps(["token" => $response["response"]["token"]]);
             $this->extendTokenExpiration();
 
             return true;
@@ -1473,7 +1488,7 @@ class fmRESTor
                 "data" => $response
             ));
 
-            return $response;
+            return $result;
         }
     }
 
@@ -1488,12 +1503,11 @@ class fmRESTor
             "type" => self::LS_INFO,
             "message" => "Checking if user is logged into the database"
         ));
-
-        if (isset($_SESSION[$this->sessionName]["token"]) && isset($_SESSION[$this->sessionName]["tokenCreated"])) {
-            $appSession = $_SESSION[$this->sessionName];
+        $tokenProps = $this->getCurrentFileMakerTokenProps();
+        if (!empty($tokenProps)) {
 
             $currentTime = new \DateTime();
-            $tokenExpire = \DateTime::createFromFormat("Y-m-d H:i:s", $appSession["tokenCreated"]);
+            $tokenExpire = \DateTime::createFromFormat("Y-m-d H:i:s", $tokenProps["expire"]);
             if ($tokenExpire === false) {
                 return false;
             }
@@ -1513,7 +1527,7 @@ class fmRESTor
                     "type" => self::LS_SUCCESS,
                     "message" => "User is logged into the database"
                 ));
-                $this->setToken($_SESSION[$this->sessionName]["token"]);
+                $this->setToken($tokenProps["token"]);
                 return true;
             }
         } else {
@@ -1532,15 +1546,62 @@ class fmRESTor
 
         $currentTime = new \DateTime();
         $tokenExpire = $currentTime->modify("+" . $this->tokenExpireTime . "minutes");
-        $_SESSION[$this->sessionName]["tokenCreated"] = $tokenExpire->format("Y-m-d H:i:s");
+        $this->setFileMakerTokenProps(["expire" => $tokenExpire->format("Y-m-d H:i:s")]);
     }
 
-    /**
-     * @param $token
-     */
+    private function getCurrentFileMakerTokenProps(){
+        $data = null;
+
+        if($this->tokenStorage === self::TS_FILE){
+            if(file_exists($this->tokenFilePath)){
+               $dataRawArray = json_decode(file_get_contents($this->tokenFilePath), true);
+               if(!empty($dataRawArray)){
+                   $data = $dataRawArray;
+               }
+            }
+        } elseif ($this->tokenStorage === self::TS_SESSION){
+            if(isset($_SESSION[$this->sessionName])){
+                $dataRawArray = json_decode($_SESSION[$this->sessionName], true);
+                if(!empty($dataRawArray)){
+                    $data = $dataRawArray;
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    private function setFileMakerTokenProps($data)
+    {
+        $currentData = $this->getCurrentFileMakerTokenProps();
+
+        if(empty($currentData)){
+            $currentData = [
+                "token" => "",
+                "expire" => ""
+            ];
+        }
+
+        // UPDATE DATA
+        if (isset($data["token"])) {
+            $currentData["token"] = $data["token"];
+            $this->setToken($data["token"]);
+        }
+        if (isset($data["expire"])) {
+            $currentData["expire"] = $data["expire"];
+        }
+
+        $dataJson = json_encode($currentData);
+
+        if($this->tokenStorage === self::TS_FILE) {
+            file_put_contents($this->tokenFilePath, $dataJson);
+        } elseif($this->tokenStorage === self::TS_SESSION){
+            $_SESSION[$this->sessionName] = $dataJson;
+        }
+    }
+
     private function setToken($token)
     {
-        $_SESSION[$this->sessionName]["token"] = $token;
         $this->token = $token;
     }
 
@@ -1548,6 +1609,9 @@ class fmRESTor
     {
         if (isset($_SESSION[$this->sessionName])) {
             unset($_SESSION[$this->sessionName]);
+        }
+        if (is_writable($this->tokenFilePath)) {
+            file_put_contents($this->tokenFilePath, "");
         }
     }
 
@@ -1638,17 +1702,27 @@ class fmRESTor
         exit();
     }
 
-    // TODO comment
-    private function isResultError($result)
+    public function isError($result, $throwException = false)
     {
-        if (isset($result["status"]["http_code"]) && in_array($result["status"]["http_code"], self::ERROR_RESPONSE_CODE)) {
-            $errorCode = $result["result"]["messages"][0]["code"];
-            if ($errorCode == 1630) {
-                // CAUGHT ERROR - IF USER CALL UNSUPPORTED FUNCTION FOR SELECTED FILEMAKER
-                $this->response(-107);
-            } else {
+        if (isset($result["status"]["http_code"]) && in_array($result["status"]["http_code"], self::ERROR_RESPONSE_CODE) || !is_array($result["result"])) {
+            if($throwException === true){
                 throw new \Exception(json_encode($result["result"]), $result["status"]["http_code"]);
             }
+            return true;
         }
+        return false;
+    }
+
+    public function isRecordExist($result){
+        $recordMissingErrorCode = 401;
+
+        if(isset($result["result"]["messages"][0]["code"]) && intval($result["result"]["messages"][0]["code"]) === $recordMissingErrorCode){
+            return false;
+        }
+        return true;
+    }
+
+    public function getResponse($result){
+        return $result["result"];
     }
 }

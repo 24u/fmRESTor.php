@@ -17,6 +17,13 @@ $GetRecord= array(
 
 // Get the record with ID 11
 $id = 11;
-$response2 = $fm->getRecord($id, $GetRecord);
-var_dump($response, $response2);
+$result = $fm->getRecord($id, $GetRecord);
+if(!$fm->isError($result)){
+    echo "Request succeeded";
+} else {
+    echo "Request Failed";
+}
+
+$response = $fm->getResponse($result);
+var_dump($response);
 exit();

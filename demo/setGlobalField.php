@@ -39,6 +39,8 @@ $setGlobalField = array(
 $response2 = $fm->setGlobalField($setGlobalField);
 
 // The value from global fields is set up just for this session. We can check the global fields with get record
-$response3 = $fm->getRecord($id); 
+$response3 = $fm->getRecord($id);
+
+
 var_dump($response, $response2, $response3);
 exit();
