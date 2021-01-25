@@ -9,9 +9,9 @@ $fm = new fmRESTor("127.0.0.1", "fmRESTor", "php_user", "api", "api123456", arra
 // Get useful information about specific layout, including fields on the layout, portals,...
 $result = $fm->getLayoutMetadata();
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

@@ -16,9 +16,9 @@ $duplicateRecord = array(
 $id = 4;
 $result = $fm->duplicateRecord($id, $duplicateRecord);
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

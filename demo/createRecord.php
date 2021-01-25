@@ -39,9 +39,9 @@ $newRecord = array(
 // Creating new record
 $result = $fm->createRecord($newRecord);
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

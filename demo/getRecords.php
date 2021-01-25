@@ -19,9 +19,9 @@ $GetRecords= array(
 // Gets records with maximum display of 10 records 
 $result = $fm->getRecords($GetRecords);
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

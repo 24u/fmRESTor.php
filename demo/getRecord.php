@@ -19,9 +19,9 @@ $GetRecord= array(
 $id = 11;
 $result = $fm->getRecord($id, $GetRecord);
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

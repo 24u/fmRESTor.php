@@ -91,8 +91,8 @@ tokenExpireTime | number | optional | 14 | Expiration time in minutes. fmRESTor 
 allowInsecure | boolean | optional | false | Valid SSL certificate required unless set to **true** | -105 (probably the wrong type of variable)
 autorelogin | boolean | optional | true | If request ends with auth error, fmRESTor will try the request again with request new session. It could happened if someone disconnect your session trought Admin Console or if your server was rebooted , but FileMaker Data API Token is still save in session / file on your side | -112 (probably the wrong type of variable)
 curlOptions | array | optional | [] | fmRESTor uses cURL to communicate with FileMaker Server, you can adjust the following options: [PHP cURL options list](https://www.php.net/manual/en/function.curl-setopt.php)   | -113 (probably the wrong type of variable)
-saveTokenTo | string | optional | TS\_SESSION | **TS\_SESSION** - Save FileFileMaker API token to PHP Session<br/>**TS\_FILE** - Save FileMaker API Token to File | -110 ( Unknown value )
-tokenFilePath | string | Required if option "saveTokenTo" is set to "TS_FILE" | "" | Path to file where to store FileMaker Data API Token. Create an empty file and make it writeable for PHP. | -111 (probably the wrong type of variable)
+tokenStorage | string | optional | TS\_SESSION | **TS\_SESSION** - Save FileFileMaker API token to PHP Session<br/>**TS\_FILE** - Save FileMaker API Token to File | -110 ( Unknown value )
+tokenFilePath | string | Required if option "tokenStorage" is set to "TS_FILE" | "" | Path to file where to store FileMaker Data API Token. Create an empty file and make it writeable for PHP. | -111 (probably the wrong type of variable)
 ### _Example:_
 
 ~~~php
@@ -111,7 +111,7 @@ $options = array(
 	"curlOptions" => [
 		CURLOPT_CONNECTTIMEOUT => 30
 	],
-	"saveTokenTo" => fmRESTor::TS_FILE,
+	"tokenStorage" => fmRESTor::TS_FILE,
 	"tokenFilePath" => dirname(__DIR__) . "/token/filemaker-token.txt"
 );
 
@@ -131,7 +131,7 @@ Methods
 
 ### _logout_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Close current session in the FileMaker database.
 
@@ -154,7 +154,7 @@ ___
 
 ### _getProductInformation:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Returns useful information about the FileMaker Server you're connecting to, such as version or data & time formats.
 
@@ -217,7 +217,7 @@ ___
 
 ### _getDatabaseNames:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Returns array of names of all databases hosted and enabled for access via FileMaker Data API.
 
@@ -272,7 +272,7 @@ ___
 
 ### _getScriptNames:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Returns array of names of all available scripts for given database.
 
@@ -329,7 +329,7 @@ ___
 
 ### _getLayoutNames:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Returns array of names of all available layouts for given database.
 
@@ -428,7 +428,7 @@ ___
 
 ### _getLayoutMetadata:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Returns useful information about specific layout, including fields on the layout, portals, and value list data for each field set to use a value list for data entry.
 
@@ -1135,7 +1135,7 @@ ___
 
 ### _createRecord:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Create a record in the primary table of the current fmRESTor instance context.
 
@@ -1197,7 +1197,7 @@ ___
 
 ### _deleteRecord:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Delete a record of given ID from the primary table of the current fmRESTor instance context.
 
@@ -1258,7 +1258,7 @@ ___
 
 ### _duplicateRecord:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Duplicate a record, specified by ID, found in the primary table of the current fmRESTor instance context.
 
@@ -1334,7 +1334,7 @@ ___
 
 ### _editRecord:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Update a record of given ID from the primary table of the current fmRESTor instance context.
 
@@ -1397,7 +1397,7 @@ ___
 
 ### _getRecord:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Get a record of given ID from the primary table of the current fmRESTor instance context.
 
@@ -1552,7 +1552,7 @@ ___
 
 ### _getRecords:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Get multiple records from the primary table of the current fmRESTor instance context. The function returns all records if called with no parameter or those fitting the criteria specified in its parameter.
 
@@ -2037,7 +2037,7 @@ ___
 
 ### _uploadFormDataToContainter:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Upload form data and store into container field.
     
@@ -2112,7 +2112,7 @@ ___
 
 ### _uploadFileToContainter:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Upload file and store into container field. 
     
@@ -2168,7 +2168,7 @@ ___
 
 ### _findRecord:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Returns a set of records from the primary table of the current fmRESTor instance context, fitting the find criteria specified in its parameter.
 
@@ -4229,7 +4229,7 @@ ___
 
 ### _setGlobalField:_
 
-**Supported FileMaker Server version:** 17, 18
+**Supported FileMaker Server version:** 17, 18, 19
 
 Sets the values for global fields specified in its parameter.
 
@@ -4284,7 +4284,7 @@ ___
 
 ### _runScript:_
 
-**Supported FileMaker Server version:** 18
+**Supported FileMaker Server version:** 18, 19
 
 Simply run a script in the given database without performing any other actions.
 
@@ -4343,7 +4343,7 @@ ___
 
 ### _setFileMakerLayout_
     
-**Supported FileMaker Server version:** 17, 18    
+**Supported FileMaker Server version:** 17, 18   , 19 
     
 Navigates to a database layout specified by its name.
 

@@ -15,10 +15,11 @@ $deleteRecord = array(
 // Deleting record with ID 5 (field in the database - c_record_id)
 $id = 5;
 $result = $fm->deleteRecord($id, $deleteRecord);
+
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

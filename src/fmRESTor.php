@@ -751,7 +751,7 @@ class fmRESTor
             }
         }
 
-        return $response;
+        return $result;
     }
 
     /**

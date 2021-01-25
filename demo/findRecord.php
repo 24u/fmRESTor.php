@@ -27,9 +27,9 @@ $findRecords = array(
 // Find the record with mail lawrence@lectus.ca
 $result = $fm->findRecords($findRecords);
 if(!$fm->isError($result)){
-    echo "Request succeeded";
+    echo "Request succeeded: ";
 } else {
-    echo "Request Failed";
+    echo "Request Failed: ";
 }
 
 $response = $fm->getResponse($result);

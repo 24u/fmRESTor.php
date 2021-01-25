@@ -20,7 +20,7 @@ $newRecord = array(
 $response = $fm->createRecord($newRecord);
 
 // This is ID the record that was made and the file be set there
-$id = $response["response"]["recordId"];
+$id = $fm->getResponse($response)["response"]["recordId"];
 
 // Upload the file
 $response2 = $fm->uploadFileToContainter($id, "photo", 1, __DIR__ . "/24uSoftware.jpg");

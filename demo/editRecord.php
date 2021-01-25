@@ -35,7 +35,7 @@ $newRecord = array(
 
 $createRecordsResult = $fm->createRecord($newRecord);
 if(!$fm->isError($createRecordsResult)){
-    echo "Request - create record - succeeded";
+    echo "Request - create record - succeeded: ";
 
     // This is ID the record that was made and this record will be edited
     $id = $fm->getResponse($createRecordsResult)["recordId"];
@@ -66,15 +66,15 @@ if(!$fm->isError($createRecordsResult)){
     // Edit the record
     $editRecordResult = $fm->editRecord($id, $editRecord);
     if(!$fm->isError($editRecordResult)) {
-        echo "Request - edit record - succeeded";
+        echo "Request - edit record - succeeded: ";
 
         $responseEditRecord = $fm->getResponse($editRecordResult);
         var_dump($responseEditRecord);
     } else {
-        echo "Request - edit record - Failed";
+        echo "Request - edit record - Failed: ";
         var_dump($editRecordResult);
     }
 } else {
-    echo "Request - create record - Failed";
+    echo "Request - create record - Failed: ";
     var_dump($createRecordsResult);
 }
