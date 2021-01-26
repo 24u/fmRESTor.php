@@ -38,7 +38,7 @@ if(!$fm->isError($createRecordsResult)){
     echo "Request - create record - succeeded: ";
 
     // This is ID the record that was made and this record will be edited
-    $id = $fm->getResponse($createRecordsResult)["recordId"];
+    $id = $fm->getResponse($createRecordsResult)["response"]["recordId"];
 
     // Setting parameters for editing - surname, email, personal identification number, product key for first row, version and date of expiration for second row will be edited
     $editRecord = array(
