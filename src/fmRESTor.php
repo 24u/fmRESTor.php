@@ -15,7 +15,7 @@ class fmRESTor
     private $layout;
     private $user;
     private $password;
-    private $fmDateSource;
+    private $fmDataSource;
 
     /* --- Define another attributes --- */
     private $token;
@@ -67,7 +67,7 @@ class fmRESTor
         $this->layout = $layout;
         $this->user = $user;
         $this->password = $password;
-        $this->fmDateSource = $fmDataSource;
+        $this->fmDataSource = $fmDataSource;
 
         if ($options !== null) {
            $this->setOptions($options);
@@ -1452,9 +1452,9 @@ class fmRESTor
         );
 
         $param = "";
-        if ($this->fmDateSource !== null) {
+        if ($this->fmDataSource !== null) {
             $prepareParam = array(
-                "fmDataSource" => $this->fmDateSource
+                "fmDataSource" => $this->fmDataSource
             );
 
             $param = $this->convertParametersToJson($prepareParam);
