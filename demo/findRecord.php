@@ -17,7 +17,7 @@ $findRecords = array(
     ),
     /*"sort" => array(
         array(
-            "surname" => "Neal", "sortOrder" => "ascend"
+            "fieldName" => "Neal", "sortOrder" => "ascend"
         )
     )
     "_limit.USER_licence"=> 5,
