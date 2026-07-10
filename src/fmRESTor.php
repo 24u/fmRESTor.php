@@ -1324,7 +1324,7 @@ class fmRESTor
     {
         if (is_array($parameters)) {
             if (!empty($parameters)) {
-                return json_encode($parameters);
+                return json_encode($parameters, JSON_UNESCAPED_UNICODE);
             } else {
                 return null;
             }
@@ -1591,7 +1591,7 @@ class fmRESTor
             $currentData["expire"] = $data["expire"];
         }
 
-        $dataJson = json_encode($currentData);
+        $dataJson = json_encode($currentData, JSON_UNESCAPED_UNICODE);
 
         if($this->tokenStorage === self::TS_FILE) {
             file_put_contents($this->tokenFilePath, $dataJson);
@@ -1666,7 +1666,7 @@ class fmRESTor
                 /* --- Data --- */
                 if (!empty($data)) {
                     if (is_array($data)) {
-                        $log_message .= json_encode($data) . $split_string;
+                        $log_message .= json_encode($data, JSON_UNESCAPED_UNICODE) . $split_string;
                     } else {
                         $log_message .= $data . $split_string;
                     }
@@ -1706,7 +1706,7 @@ class fmRESTor
     {
         if (isset($result["status"]["http_code"]) && in_array($result["status"]["http_code"], self::ERROR_RESPONSE_CODE) || !is_array($result["result"])) {
             if($throwException === true){
-                throw new \Exception(json_encode($result["result"]), $result["status"]["http_code"]);
+                throw new \Exception(json_encode($result["result"], JSON_UNESCAPED_UNICODE), $result["status"]["http_code"]);
             }
             return true;
         }
