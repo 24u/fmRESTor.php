@@ -4386,6 +4386,40 @@ $this->fm = new fmRESTor($config["host"], $config["database"], self::LAYOUT, $co
 
 </details>
 
+___
+
+### _fmRESTor_log_
+
+The `fmRESTor_log` method is `protected`, along with two properties it reads internally (`$fmRESTor_logType`, `$fmRESTor_rowNumber`). The FileMaker session token (`$fmRESTor_token`) is also `protected`, in case your logging integration needs it. You can extend the `fmRESTor` class and override `fmRESTor_log` to send log data to your own logging system, instead of or in addition to the default file logging.
+
+~~~php
+/**
+ * @param array $log
+ */
+protected function fmRESTor_log($log)
+~~~
+
+<details><summary>Usage</summary>
+
+~~~php
+class MyFmRESTor extends fmRESTor
+{
+    protected function fmRESTor_log($log)
+    {
+        // send $log to your own logger here
+        if ($this->fmRESTor_logType !== self::LOG_TYPE_NONE) {
+            echo ($log["message"] ?? "") . "\n";
+        }
+
+        parent::fmRESTor_log($log); // optional: keep the default file logging too
+    }
+}
+~~~
+
+</details>
+
+___
+
 Examples
 -
 The examples for each method are available inside the folder "demo".

@@ -18,14 +18,14 @@ class fmRESTor
     private $fmDataSource;
 
     /* --- Define another attributes --- */
-    private $token;
-    private $rowNumber;
+    protected $fmRESTor_token;
+    protected $fmRESTor_rowNumber;
 
     /* --- Default options --- */
     private $tokenExpireTime = 14;
     private $sessionName = "fm-api-token";
     private $logDir = __DIR__ . "/log/";
-    private $logType = self::LOG_TYPE_DEBUG;
+    protected $fmRESTor_logType = self::LOG_TYPE_DEBUG;
     private $allowInsecure = false;
     private $tokenStorage = self::TS_SESSION;
     private $autorelogin = true;
@@ -78,7 +78,7 @@ class fmRESTor
 
     private function setLogRowNumber()
     {
-        $this->rowNumber = rand(1000000, 9999999);
+        $this->fmRESTor_rowNumber = rand(1000000, 9999999);
     }
 
     /**
@@ -91,7 +91,7 @@ class fmRESTor
             $logType = $options["logType"];
 
             if (in_array($logType, [self::LOG_TYPE_DEBUG, self::LOG_TYPE_ERRORS, self::LOG_TYPE_NONE]) && !empty($logType)) {
-                $this->logType = $logType;
+                $this->fmRESTor_logType = $logType;
             } else {
                 $this->response(-101);
             }
@@ -200,7 +200,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -208,7 +208,7 @@ class fmRESTor
         ));
 
         if ($this->isLogged() === false) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -219,7 +219,7 @@ class fmRESTor
         }
 
         $request = array(
-            "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/sessions/" . rawurlencode($this->token),
+            "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/sessions/" . rawurlencode($this->fmRESTor_token),
             "method" => "DELETE",
         );
 
@@ -228,7 +228,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -238,7 +238,7 @@ class fmRESTor
 
             $this->destroySessionToken();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -262,7 +262,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -285,7 +285,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts/" . rawurlencode($this->layout) . "/script/" . rawurlencode($scriptName) . "?" . $param,
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -294,7 +294,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -304,7 +304,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -327,7 +327,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -354,7 +354,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -364,7 +364,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -388,7 +388,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -412,7 +412,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -422,7 +422,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -446,7 +446,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -464,7 +464,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/scripts",
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
 
         );
@@ -474,7 +474,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -484,7 +484,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -508,7 +508,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -526,7 +526,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts",
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
 
         );
@@ -536,7 +536,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -546,7 +546,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -569,7 +569,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -587,7 +587,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts/" . rawurlencode($this->layout),
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
 
         );
@@ -597,7 +597,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -607,7 +607,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -632,7 +632,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -652,7 +652,7 @@ class fmRESTor
             "method" => "POST",
             "headers" => array(
                 "Content-Type: application/json",
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -662,7 +662,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -672,7 +672,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -697,7 +697,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -719,7 +719,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts/" . rawurlencode($this->layout) . "/records/" . $id . "?" . $param,
             "method" => "DELETE",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -728,7 +728,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -738,7 +738,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -763,7 +763,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -783,7 +783,7 @@ class fmRESTor
             "method" => "POST",
             "headers" => array(
                 "Content-Type: application/json",
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -797,7 +797,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -807,7 +807,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -832,7 +832,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -852,7 +852,7 @@ class fmRESTor
             "method" => "PATCH",
             "headers" => array(
                 "Content-Type: application/json",
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -863,7 +863,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -873,7 +873,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -898,7 +898,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -921,7 +921,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts/" . rawurlencode($this->layout) . "/records/" . $id . "?" . $param,
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -930,7 +930,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -940,7 +940,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -964,7 +964,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -989,7 +989,7 @@ class fmRESTor
             "url" => "/fmi/data/v1/databases/" . rawurlencode($this->db) . "/layouts/" . rawurlencode($this->layout) . "/records/" . "?" . $param,
             "method" => "GET",
             "headers" => array(
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -998,7 +998,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1009,7 +1009,7 @@ class fmRESTor
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1036,7 +1036,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1060,7 +1060,7 @@ class fmRESTor
             "method" => "POST",
             "headers" => array(
                 'Content-Type: multipart/form-data',
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -1069,7 +1069,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1079,7 +1079,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1111,7 +1111,7 @@ class fmRESTor
         $mime = finfo_file($finfo, $path);
         $filename = basename($path);
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1135,7 +1135,7 @@ class fmRESTor
             "method" => "POST",
             "headers" => array(
                 'Content-Type: multipart/form-data',
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -1144,7 +1144,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1154,7 +1154,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1180,7 +1180,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1200,7 +1200,7 @@ class fmRESTor
             "method" => "POST",
             "headers" => array(
                 "Content-Type: application/json",
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -1210,7 +1210,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1220,7 +1220,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1245,7 +1245,7 @@ class fmRESTor
     {
         $this->setLogRowNumber();
 
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1265,7 +1265,7 @@ class fmRESTor
             "method" => "PATCH",
             "headers" => array(
                 "Content-Type: application/json",
-                "Authorization: Bearer " . $this->token
+                "Authorization: Bearer " . $this->fmRESTor_token
             )
         );
 
@@ -1275,7 +1275,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1285,7 +1285,7 @@ class fmRESTor
 
             $this->extendTokenExpiration();
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1355,7 +1355,7 @@ class fmRESTor
      */
     private function callURL($requestSettings, $data = null)
     {
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1414,7 +1414,7 @@ class fmRESTor
                 "result" => $errors
             ];
         } else {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_INFO,
@@ -1435,7 +1435,7 @@ class fmRESTor
      */
     private function login()
     {
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1466,7 +1466,7 @@ class fmRESTor
         try {
             $this->isError($result, true);
 
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_SUCCESS,
@@ -1480,7 +1480,7 @@ class fmRESTor
             return true;
 
         } catch (\Exception $e) {
-            $this->log(array(
+            $this->fmRESTor_log(array(
                 "line" => __LINE__,
                 "method" => __METHOD__,
                 "type" => self::LS_ERROR,
@@ -1497,7 +1497,7 @@ class fmRESTor
      */
     private function isLogged()
     {
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1513,7 +1513,7 @@ class fmRESTor
             }
 
             if ($currentTime >= $tokenExpire) {
-                $this->log(array(
+                $this->fmRESTor_log(array(
                     "line" => __LINE__,
                     "method" => __METHOD__,
                     "type" => self::LS_WARNING,
@@ -1521,7 +1521,7 @@ class fmRESTor
                 ));
                 return false;
             } else {
-                $this->log(array(
+                $this->fmRESTor_log(array(
                     "line" => __LINE__,
                     "method" => __METHOD__,
                     "type" => self::LS_SUCCESS,
@@ -1537,7 +1537,7 @@ class fmRESTor
 
     private function extendTokenExpiration()
     {
-        $this->log(array(
+        $this->fmRESTor_log(array(
             "line" => __LINE__,
             "method" => __METHOD__,
             "type" => self::LS_INFO,
@@ -1602,7 +1602,7 @@ class fmRESTor
 
     private function setToken($token)
     {
-        $this->token = $token;
+        $this->fmRESTor_token = $token;
     }
 
     private function destroySessionToken()
@@ -1618,7 +1618,7 @@ class fmRESTor
     /**
      * @param array $log
      */
-    private function log($log)
+    protected function fmRESTor_log($log)
     {
         $type = null;
         if (isset($log["type"])) {
@@ -1640,15 +1640,15 @@ class fmRESTor
             $data = $log["data"];
         }
 
-        if ($this->logType !== self::LOG_TYPE_NONE) {
-            if ($this->logType == self::LOG_TYPE_ERRORS && $type === self::LS_ERROR || $this->logType == self::LOG_TYPE_DEBUG) {
+        if ($this->fmRESTor_logType !== self::LOG_TYPE_NONE) {
+            if ($this->fmRESTor_logType == self::LOG_TYPE_ERRORS && $type === self::LS_ERROR || $this->fmRESTor_logType == self::LOG_TYPE_DEBUG) {
 
                 /* --- Define basic variable needed for log function --- */
                 $log_message = "";
                 $split_string = "\t";
 
                 /* --- Row number --- */
-                $log_message .= $this->rowNumber . $split_string;
+                $log_message .= $this->fmRESTor_rowNumber . $split_string;
 
                 /* --- Date & Time --- */
                 $log_message .= date("Y-m-d H:i:s") . $split_string;
